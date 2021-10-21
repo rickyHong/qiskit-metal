@@ -343,6 +343,8 @@ class Cheesing():
                                    precision=self.precision,
                                    layer=self.layer,
                                    datatype=self.datatype_cheese + 1)
+        #  PAY Attention, if you change this cell name,
+        # you have to change the name in Fabricate._remove_cheese_diff_cell()
         diff_holes_cell_name = f'TOP_{self.chip_name}_{self.layer}_Cheese_diff'
         diff_holes_cell = self.lib.new_cell(diff_holes_cell_name,
                                             overwrite_duplicate=True)
