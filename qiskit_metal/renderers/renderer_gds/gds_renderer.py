@@ -34,6 +34,7 @@ import numpy as np
 
 from qiskit_metal.renderers.renderer_base import QRenderer
 from qiskit_metal.renderers.renderer_gds.make_cheese import Cheesing
+from qiskit_metal.renderers.renderer_gds.fabricate import Fabricate
 from qiskit_metal.toolbox_metal.parsing import is_true
 from qiskit_metal import draw
 
@@ -147,6 +148,22 @@ class QGDSRenderer(QRenderer):
         # for that layer.  If user wants to export to a negative_mask for all
         # layers, every layer_number MUST be in list.
         negative_mask=Dict(main=[]),
+
+        # For the final fabrication layer, Show/Don't Show intermediate steps?
+        fabricate=Dict(
+            # If false, show the intermediate steps in the exported gds file.
+            # If true, show the geometries on either neg_datatype_fabricate or pos_datatype_fabricate.
+            fab='False',
+
+            #datatype should not be more than 255 based on limitations in GDSPY.
+
+            # For a layer which has a negative mask, and if fabricate option is 'True',
+            # denote the datatype to hold gds export for the layer.
+            neg_datatype_fabricate='200',
+
+            # For a layer which has a positive mask, and if fabricate option is 'True',
+            # denote the datatype to hold gds export for the layer.
+            pos_datatype_fabricate='200'),
 
         # corners: ('natural', 'miter', 'bevel', 'round', 'smooth',
         # 'circular bend', callable, list)
@@ -1367,6 +1384,8 @@ class QGDSRenderer(QRenderer):
 
                             if self._check_no_cheese(chip_name,
                                                      chip_layer) == 1:
+                                #  PAY Attention, if you change this cell name,
+                                # you have to change the name in Fabricate._remove_nocheese_cell()
                                 no_cheese_subtract_cell_name = (
                                     f'TOP_{chip_name}_{chip_layer}'
                                     f'_NoCheese_{sub_layer}')
@@ -1670,11 +1689,12 @@ class QGDSRenderer(QRenderer):
             else:
                 ground_cell.add(diff_geometry)
 
-        self._handle_q_subtract_false(chip_name, chip_layer, ground_cell)
+        self._handle_q_subtract_false(lib, chip_name, chip_layer, ground_cell)
         QGDSRenderer._add_groundcell_to_chip_only_top(lib, chip_only_top,
                                                       ground_cell)
 
-    def _handle_q_subtract_false(self, chip_name: str, chip_layer: int,
+    def _handle_q_subtract_false(self, lib: gdspy.GdsLibrary, chip_name: str,
+                                 chip_layer: int,
                                  ground_cell: gdspy.library.Cell):
         """For each layer, add the subtract=false components to ground.
 
@@ -1691,8 +1711,13 @@ class QGDSRenderer(QRenderer):
         else:
             if len(self.chip_info[chip_name][chip_layer]
                    ['q_subtract_false']) != 0:
-                ground_cell.add(
+                no_subtract_cell_name = f'TOP_{chip_name}_{chip_layer}_no_subtract'
+                no_subtract_cell = lib.new_cell(no_subtract_cell_name,
+                                                overwrite_duplicate=True)
+                no_subtract_cell.add(
                     self.chip_info[chip_name][chip_layer]['q_subtract_false'])
+                # Keep this as a separate cell so can keep datatypes separate from ground.
+                ground_cell.add(gdspy.CellReference(no_subtract_cell))
 
     @classmethod
     def _add_groundcell_to_chip_only_top(cls, lib: gdspy.GdsLibrary,
@@ -2064,6 +2089,32 @@ class QGDSRenderer(QRenderer):
         chip_only_top_layer.add(
             gdspy.CellReference(temp_cell, origin=center, rotation=rotation))
 
+    def _fabricate(self):
+        """Iterate through each chip, then layer to prepare for fabrication."""
+        cheese_sub_layer = int(self.parse_value(self.options.cheese.datatype))
+        nocheese_sub_layer = int(
+            self.parse_value(self.options.no_cheese.datatype))
+        neg_datatype = int(
+            self.parse_value(self.options.fabricate.neg_datatype_fabricate))
+        pos_datatype = int(
+            self.parse_value(self.options.fabricate.pos_datatype_fabricate))
+
+        for chip_name in self.chip_info:
+            layers_in_chip = self.design.qgeometry.get_all_unique_layers(
+                chip_name)
+
+            for chip_layer in layers_in_chip:
+                is_neg_mask = self._is_negative_mask(chip_name, chip_layer)
+                fabricate = Fabricate(self.lib, chip_name, chip_layer)
+                if is_neg_mask:
+                    fabricate.fabricate_negative_mask(neg_datatype,
+                                                      nocheese_sub_layer,
+                                                      cheese_sub_layer)
+                else:  # positive mask
+                    fabricate.fabricate_positive_mask(pos_datatype,
+                                                      nocheese_sub_layer,
+                                                      cheese_sub_layer)
+
     def export_to_gds(self,
                       file_name: str,
                       highlight_qcomponents: list = None) -> int:
@@ -2109,6 +2160,9 @@ class QGDSRenderer(QRenderer):
             # into self.chip_info[chip_name][chip_layer]['cheese'].
             # Not finished.
             self._populate_cheese()
+
+            if is_true(self.options.fabricate['fab']):
+                self._fabricate()
 
             # Export the file to disk from self.lib
             self.lib.write_gds(file_name)
