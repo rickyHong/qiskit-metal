@@ -407,29 +407,35 @@ def clear_axis(ax: plt.Axes):
     Args:
         ax (plt.Axes): MPL axis to clear
     """
-    # ax.clear()
+    # Note:
+    # plt.cla() clears an axes, i.e. the currently active axes in the current figure. It leaves the other axes untouched.
+    # plt.clf() clears the entire current figure with all its axes, but leaves the window opened, such that it may be reused for other plots.
+    # In the source code, clear() calls cls().  https://github.com/matplotlib/matplotlib/blob/main/lib/matplotlib/axes/_base.py
+    ax.clear()
+
     # pylint: disable=protected-access
-    ax.lines = []
-    ax.patches = []
-    ax.texts = []
-    ax.tables = []
-    ax.artists = []
-    ax.images = []
-    ax._mouseover_set = _OrderedSet()
-    ax.child_axes = []
-    ax._current_image = None  # strictly for pyplot via _sci, _gci
-    ax.legend_ = None
-    ax.collections = []  # collection.Collection instances
-    ax.containers = []
 
-    # reset the bounds for autoscale
-    ax.ignore_existing_data_limits = True
-    # Alternatives that fail:
-    # ax.relim()
-    #           At present, Collection instances are not supported.
-    #           However, this is how descartes plots!
-    # ax.dataLim.set_points(np.array([[-1, -1], [1, 1]]))
+    # ax.lines = []
+    # ax.patches = []
+    # ax.texts = []
+    # ax.tables = []
+    # ax.artists = []
+    # ax.images = []
+    # ax._mouseover_set = _OrderedSet()
+    # ax.child_axes = []
+    # ax._current_image = None  # strictly for pyplot via _sci, _gci
+    # ax.legend_ = None
+    # ax.collections = []  # collection.Collection instances
+    # ax.containers = []
 
-    # for axis in [ax.xaxis, ax.yaxis]:
-    #    # Clear the callback registry for this axis, or it may "leak"
-    #    pass #self.callbacks = cbook.CallbackRegistry()
+    # # reset the bounds for autoscale
+    # ax.ignore_existing_data_limits = True
+    # # Alternatives that fail:
+    # # ax.relim()
+    # #           At present, Collection instances are not supported.
+    # #           However, this is how descartes plots!
+    # # ax.dataLim.set_points(np.array([[-1, -1], [1, 1]]))
+
+    # # for axis in [ax.xaxis, ax.yaxis]:
+    # #    # Clear the callback registry for this axis, or it may "leak"
+    # #    pass #self.callbacks = cbook.CallbackRegistry()
