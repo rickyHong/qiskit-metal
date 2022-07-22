@@ -905,6 +905,28 @@ class Vec3D(Vector):
             raise ValueError("Either one or both points not on the user_plane.")
 
     @staticmethod
+    def mirror(points3D: List[np.ndarray],
+               user_plane: np.ndarray) -> List[np.ndarray]:
+        """Get the mirrored vector across the user_plane.
+
+        Args:
+            points3D (List[np.ndarray]): 3D list of points
+            user_plane (np.ndarray): 2D plane containing the input points and
+                                    defined by coefficients A,B,C,D in
+                                    equation (Ax + By + Cz + D = 0)
+
+        Returns:
+            List[np.ndarray]: list of mirrored vectors, each a np.ndarray instance
+        """
+        mirrored_pts = []
+        for pt in points3D:
+            old_pt = np.append(pt, [1])
+            new_pt = -1 * pt + 2 * Vec3D.dot(user_plane.dot(old_pt)) * pt
+            mirrored_pts.append(new_pt)
+
+        return mirrored_pts
+
+    @staticmethod
     def add_z(vec2D: np.array, z: float = 0.):
         raise NotImplementedError(
             "This method does not need to be implemented for 3D.")
