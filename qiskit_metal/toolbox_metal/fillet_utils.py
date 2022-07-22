@@ -124,7 +124,7 @@ def transform_arc_points(vecs: np.ndarray, translate: np.ndarray,
     new_vecs = []
     for vec in vecs:
         vec = Vec3D.rotate(vec, [0, 0, 0], az=True, radians=angle1)
-        vec = Vec3D.translate(vec, [*translate, chip_z])
+        vec = Vec3D.translate(vec, translate)
         new_vecs.append(vec)
 
     return new_vecs
