@@ -921,7 +921,7 @@ class Vec3D(Vector):
         mirrored_pts = []
         for pt in points3D:
             old_pt = np.append(pt, [1])
-            new_pt = -1 * pt + 2 * Vec3D.dot(user_plane.dot(old_pt)) * pt
+            new_pt = -1 * pt + 2 * Vec3D.dot(user_plane, old_pt) * pt
             mirrored_pts.append(new_pt)
 
         return mirrored_pts
